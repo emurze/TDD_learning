@@ -67,10 +67,18 @@ class NewVisitorTest(unittest.TestCase):
 
         # Then client desire to see the result table
         table = self.browser.find_element(by=By.ID, value='id_item_table')
-        items = table.find_elements(by=By.TAG_NAME, value='tr')
+        items = table.find_elements(by=By.CLASS_NAME, value='item__content')
+
+        input_box_message2 = 'Vlad gay'
+        input_box.send_keys(input_box_message2)
+        input_box.send_keys(Keys.ENTER)
+        time.sleep(1)
+        table = self.browser.find_element(by=By.ID, value='id_item_table')
+        items = table.find_elements(by=By.CLASS_NAME, value='item__content')
 
         # With the entered message
-        self.assertTrue(any(item == input_box_message for item in items))
+        self.assertTrue(any(item.text == input_box_message for item in items))
+        self.assertTrue(any(item.text == input_box_message2 for item in items))
 
 
 if __name__ == '__main__':
