@@ -21,4 +21,6 @@ COPY src src
 
 RUN poetry install
 
+COPY setup.cfg .
+
 EXPOSE 8080

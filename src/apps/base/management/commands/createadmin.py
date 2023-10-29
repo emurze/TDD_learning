@@ -18,4 +18,4 @@ class Command(BaseCommand):
                 email=settings.DEFAULT_ADMIN_EMAIL,
                 password=settings.DEFAULT_ADMIN_PASSWORD,
             )
-            lg.debug(f'Admin {user.username} was created.')
+            lg.info(f'Admin {user.username} was created.')
