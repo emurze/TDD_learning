@@ -1,14 +1,5 @@
-"""
-Check main page title. It should work.
-Additionally, It should contain successfully.
-
-1. Client can't see the site
-
-End of this User History
-
-"""
-
 import logging
+import pprint
 import time
 import unittest
 
@@ -16,69 +7,43 @@ from selenium import webdriver
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 
-lg = logging.getLogger(__name__)
 
-PROTOCOL = 'http'
-SOCKET = '0.0.0.0:8080'
-URL = f'{PROTOCOL}://{SOCKET}'
-
-
-class NewVisitorTest(unittest.TestCase):
+class FunctionalTest(unittest.TestCase):
     def setUp(self) -> None:
         self.browser = webdriver.Firefox()
 
     def tearDown(self) -> None:
         self.browser.quit()
 
-    def test_can_start_a_list_and_retrieve_it_later(self) -> None:
-        self.browser.get(URL)
-
-        # Client notices that title should contain To-Do
+    def test_to_do_page(self) -> None:
+        self.browser.get('http://0.0.0.0:8080/')
         self.assertIn('To-Do', self.browser.title)
 
-        # And also welcome should contain 'To-Do'
         welcome_text = self.browser.find_element(
-            by=By.CLASS_NAME,
-            value='welcome__text'
+            By.CLASS_NAME, 'welcome__text'
         ).text
         self.assertIn('To-Do', welcome_text)
 
-        # Client desire to see input with the definite inner message
-        input_box = self.browser.find_element(
-            by=By.ID,
-            value='id_new_item'
-        )
+        input_box = self.browser.find_element(By.ID, 'id_content')
         self.assertEqual(
             input_box.get_attribute('placeholder'),
-            'Enter a to-do item',
+            'Enter new item name',
         )
 
-        input_box_message = 'Vlad gay'
+        self.add_to_table_and_check_item('item 1')
+        self.add_to_table_and_check_item('item 2')
 
-        # Client desire to send message
-        input_box.send_keys(input_box_message)
-
-        # And click the submit button
+    def add_to_table_and_check_item(self, item: str, timeout: int = 1) -> None:
+        input_box = self.browser.find_element(By.ID, 'id_content')
+        input_box.send_keys(item)
         input_box.send_keys(Keys.ENTER)
 
-        # Wait for reloading should be replaced on async wait
-        # in the near future
-        time.sleep(1)
+        time.sleep(timeout)
 
-        # Then client desire to see the result table
-        table = self.browser.find_element(by=By.ID, value='id_item_table')
-        items = table.find_elements(by=By.CLASS_NAME, value='item__content')
+        result_table = self.browser.find_element(By.CLASS_NAME, 'result_table')
+        items = result_table.find_elements(By.TAG_NAME, 'td')
 
-        input_box_message2 = 'Vlad gay'
-        input_box.send_keys(input_box_message2)
-        input_box.send_keys(Keys.ENTER)
-        time.sleep(1)
-        table = self.browser.find_element(by=By.ID, value='id_item_table')
-        items = table.find_elements(by=By.CLASS_NAME, value='item__content')
-
-        # With the entered message
-        self.assertTrue(any(item.text == input_box_message for item in items))
-        self.assertTrue(any(item.text == input_box_message2 for item in items))
+        self.assertTrue(any(i.text == item for i in items))
 
 
 if __name__ == '__main__':
