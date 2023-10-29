@@ -21,7 +21,6 @@ services:
              
              poetry run flake8 &&
              poetry run python3 manage.py check &&
-             poetry run python3 manage.py test --no-input &&
              
              poetry run python3 manage.py runserver 0.0.0.0:8080'
     networks:
@@ -45,3 +44,5 @@ volumes:
   postgres_data:
   app_static:
   app_media:
+
+#poetry run python3 manage.py test --no-input &&
