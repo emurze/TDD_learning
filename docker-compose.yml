@@ -21,12 +21,16 @@ services:
              
              poetry run flake8 &&
              poetry run python3 manage.py check &&
-             
+      
              poetry run python3 manage.py runserver 0.0.0.0:8080'
     networks:
       - backend
     ports:
       - '8080:8080'
+
+    tty: true
+    stdin_open: true
+
     volumes:
       - ./src:/service/src
       - app_static:/service/src/static
@@ -36,6 +40,17 @@ services:
     restart: unless-stopped
     depends_on:
       - db
+      - chrome
+
+  chrome:
+    image: selenium/standalone-chrome:latest
+    networks:
+      - backend
+    ports:
+      - '4444:4444'
+      - '7900:7900'
+    privileged: true
+    shm_size: 2g
 
 networks:
   backend:

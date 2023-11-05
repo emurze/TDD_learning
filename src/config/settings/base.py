@@ -7,7 +7,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 DEBUG = bool(int(os.environ.get("DEBUG", default=0)))
 
-ALLOWED_HOSTS = ['mysite.com', '0.0.0.0', '127.0.0.1']
+ALLOWED_HOSTS = ['mysite.com', '0.0.0.0', '127.0.0.1', 'tdd_learning', '*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',

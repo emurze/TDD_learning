@@ -41,4 +41,3 @@ class TodoPageTest(TestCase):
 
         self.assertIn(first_item.content, response.content.decode('utf-8'))
         self.assertIn(second_item.content, response.content.decode('utf-8'))
-
