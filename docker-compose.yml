@@ -27,10 +27,6 @@ services:
       - backend
     ports:
       - '8080:8080'
-
-    tty: true
-    stdin_open: true
-
     volumes:
       - ./src:/service/src
       - app_static:/service/src/static

@@ -1,9 +1,7 @@
 from django.urls import path
 
-from apps.list.views import todo_page_view
-
-app_name = 'list'
+from apps.list.views import HomePageView
 
 urlpatterns = [
-    path('', todo_page_view, name='todo')
+    path('', HomePageView.as_view(), name='home_page'),
 ]

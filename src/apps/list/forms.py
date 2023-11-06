@@ -1,14 +1,9 @@
 from django import forms
 
-from apps.list.models import TodoItem
+from apps.list.models import ListItem
 
 
-class CreateTodoItemForm(forms.ModelForm):
+class TodoCreateItemForm(forms.ModelForm):
     class Meta:
-        model = TodoItem
+        model = ListItem
         fields = ('content',)
-        widgets = {
-            'content': forms.TextInput(attrs={
-                'placeholder': 'Enter new item name',
-            })
-        }
