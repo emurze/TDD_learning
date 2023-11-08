@@ -1,9 +1,10 @@
-from django.test import TestCase
+from unittest import TestCase
 
 from apps.list.forms import TodoCreateItemForm
 
 
 class ToDoCreateItemFormTest(TestCase):
+    # unittest
     def test_content_maxlength_constraint(self) -> None:
         form = TodoCreateItemForm(data={'content': 'New item' * 200})
         self.assertIn(

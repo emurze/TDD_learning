@@ -3,10 +3,17 @@
 {% block title %}To-Do{% endblock %}
 
 {% block content %}
-	<h2>Start a new To-Do list</h2>
+	<h2>Add Item</h2>
 	<form method="POST">
 		{% csrf_token %}
-		<p>{{ form.content }}{{ form.content.errors }}</p>
+		{{ form.as_p }}
 		<p><button type="submit">add</button></p>
 	</form>
+	<div id="todo_list">
+		{% for item in items %}
+			<article class="item">
+				{{ item.content }}
+			</article>
+		{% endfor %}
+	</div>
 {% endblock %}
