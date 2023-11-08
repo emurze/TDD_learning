@@ -85,3 +85,7 @@ DEFAULT_ADMIN_PASSWORD = os.getenv('DEFAULT_ADMIN_PASSWORD', 'adm1')
 
 LOGIN_URL = reverse_lazy('login')
 LOGIN_REDIRECT_URL = reverse_lazy('home_page')
+
+OPEN_URLS = [
+    reverse_lazy('register'),
+]

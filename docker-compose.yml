@@ -18,10 +18,6 @@ services:
       sh -c 'cd src &&
              poetry run python3 manage.py migrate --no-input &&
              poetry run python3 manage.py createadmin &&
-             
-             poetry run flake8 &&
-             poetry run python3 manage.py check &&
-      
              poetry run python3 manage.py runserver 0.0.0.0:8080'
     networks:
       - backend

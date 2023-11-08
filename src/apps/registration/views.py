@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import login
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
@@ -10,7 +11,7 @@ from apps.registration.forms import RegistrationForm
 class RegistrationView(CreateView):
     template_name = 'registration/register.html'
     form_class = RegistrationForm
-    success_url = reverse_lazy('dashboard')
+    success_url = reverse_lazy(settings.LOGIN_REDIRECT_URL)
 
     def form_valid(self, form: RegistrationForm) -> HttpResponseRedirect:
         cd = form.cleaned_data
@@ -22,4 +23,4 @@ class RegistrationView(CreateView):
             user,
             backend='django.contrib.auth.backends.ModelBackend'
         )
-        return redirect(self.success_url)
+        return redirect('/')
