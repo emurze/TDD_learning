@@ -69,7 +69,7 @@ class TestHomePage(LoginTestCase):
     # unittest
     def test_template(self) -> None:
         response = self.client.get('/')
-        self.assertTemplateUsed(response, 'home_page.html')
+        self.assertTemplateUsed(response, 'list/home_page.html')
 
     # unittest
     def test_home_page_url(self) -> None:
@@ -124,7 +124,7 @@ class TestListView(LoginTestCase):
     # unittest
     def test_template(self) -> None:
         response = self.client.get(self.url)
-        self.assertTemplateUsed(response, 'list.html')
+        self.assertTemplateUsed(response, 'list/list.html')
 
     # unittest
     def test_list_page_url(self) -> None:

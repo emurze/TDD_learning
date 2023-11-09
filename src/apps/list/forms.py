@@ -7,3 +7,8 @@ class TodoCreateItemForm(forms.ModelForm):
     class Meta:
         model = ListItem
         fields = ('content',)
+        widgets = {
+            'content': forms.TextInput(attrs={
+                'placeholder': 'Enter a to-do item'
+            })
+        }

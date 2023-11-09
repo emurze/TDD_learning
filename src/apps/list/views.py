@@ -13,8 +13,15 @@ lg = logging.getLogger(__name__)
 
 
 class HomePageView(CreateView):
-    template_name = 'home_page.html'
+    template_name = 'list/home_page.html'
     form_class = TodoCreateItemForm
+
+    def get_context_data(self, **kwargs) -> dict:
+        kwargs['todo_form'] = {
+            'label': 'Create to-do list',
+            'action': '/',
+        }
+        return super().get_context_data(**kwargs)
 
     def get_success_url(self) -> str:
         return reverse('lists', args=(f'{self.request.user.id}_list', ))
@@ -48,4 +55,13 @@ def my_list_view(request: WSGIRequest, slug: str) -> HttpResponse:
     else:
         items = ListItem.objects.filter(list__slug=slug)
         form = TodoCreateItemForm()
-    return render(request, 'list.html', {'items': items, 'form': form})
+
+    context = {
+        'items': items,
+        'form': form,
+        'todo_form': {
+            'label': 'Your to-do list',
+            'action': reverse('lists', args=(f'{request.user.id}_list', )),
+        },
+    }
+    return render(request, 'list/list.html', context)
