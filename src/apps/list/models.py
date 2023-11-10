@@ -1,6 +1,7 @@
 import reprlib
 
 from django.db import models
+from django.urls import reverse
 
 
 class List(models.Model):
@@ -12,6 +13,9 @@ class List(models.Model):
         indexes = (
             models.Index(fields=('slug',)),
         )
+
+    def get_absolute_url(self) -> str:
+        return reverse('lists', args=(self.slug,))
 
 
 class ListItem(models.Model):

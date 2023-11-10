@@ -1,4 +1,5 @@
 import datetime
+
 from django.test import TestCase
 
 from django.db import IntegrityError
@@ -6,13 +7,14 @@ from django.db import IntegrityError
 from apps.list.models import ListItem, List
 
 
-class ListItemModel(TestCase):
+class ListAndItemsModelTest(TestCase):
+    def setUp(self) -> None:
+        self.new_list = List.objects.create(slug='some')
+
     # integration
     def test_creating_and_retrieving(self) -> None:
-        new_list = List.objects.create(slug='some')
-
-        ListItem.objects.create(content='item_1', list=new_list)
-        ListItem.objects.create(content='item_2', list=new_list)
+        ListItem.objects.create(content='item_1', list=self.new_list)
+        ListItem.objects.create(content='item_2', list=self.new_list)
 
         self.assertEqual(2, ListItem.objects.count())
 
@@ -22,10 +24,14 @@ class ListItemModel(TestCase):
         self.assertEqual(item_2.content, 'item_2')
 
     # integration
+    def test_item_not_null(self) -> None:
+        with self.assertRaises(IntegrityError):
+            ListItem.objects.create(content=None, list=self.new_list)
+
+    # integration
     def test_fk_list_rel(self) -> None:
-        some_list = List.objects.create(slug='some_list')
-        item = ListItem.objects.create(content='item_1', list=some_list)
-        self.assertEqual(item.list, some_list)
+        item = ListItem.objects.create(content='item_1', list=self.new_list)
+        self.assertEqual(item.list, self.new_list)
 
 
 class ListModelTest(TestCase):
@@ -55,3 +61,11 @@ class ListModelTest(TestCase):
     # integration
     def test_ordering(self) -> None:
         self.assertTrue(List.objects.all().ordered)
+
+    # integration
+    def test_get_absolute_url(self) -> None:
+        new_list = List.objects.create(slug='hi')
+        self.assertEqual(
+            new_list.get_absolute_url(),
+            f'/lists/{new_list.slug}/'
+        )

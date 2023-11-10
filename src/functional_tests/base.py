@@ -1,9 +1,13 @@
+import os
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
 from functional_tests.libs import MyLiveServerTestCase, get_driver
+
+MAX_WAIT = 10
 
 
 class FunctionalTest(MyLiveServerTestCase):
@@ -20,14 +24,11 @@ class FunctionalTest(MyLiveServerTestCase):
     def tearDown(self) -> None:
         self.driver.quit()
 
-    def get_todo_list(self) -> WebElement:
-        WebDriverWait(self.driver, 10).until(
-            ec.presence_of_element_located(
-                (By.ID, "todo_list"),
-            )
+    def wait_for(self, by: str, value: str) -> WebElement:
+        WebDriverWait(self.driver, MAX_WAIT).until(
+            ec.presence_of_element_located((by, value))
         )
-        elem = self.driver.find_element(By.ID, "todo_list")
-        return elem
+        return self.driver.find_element(by, value)
 
     def register(self, username: str, password: str) -> None:
         self.driver.get(self.live_server_url + '/register/')
@@ -40,3 +41,9 @@ class FunctionalTest(MyLiveServerTestCase):
         password_input.send_keys(password)
         password2_input.send_keys(password)
         password2_input.submit()
+
+    def wait_todo_list(self) -> WebElement:
+        return self.wait_for(By.ID, 'todo_list')
+
+    def get_input_box(self) -> WebElement:
+        return self.driver.find_element(By.ID, 'id_content')

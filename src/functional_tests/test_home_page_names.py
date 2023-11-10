@@ -7,8 +7,8 @@ class HomePageNamesTest(FunctionalTest):
     def test_home_page_title(self) -> None:
         self.assertIn('To-Do', self.driver.title)
 
-    def test_input_box(self) -> None:
-        input_box = self.driver.find_element(By.ID, 'id_content')
+    def test_input_box_placeholder(self) -> None:
+        input_box = self.get_input_box()
         self.assertEqual(
             input_box.get_attribute('placeholder'),
             'Enter a to-do item'

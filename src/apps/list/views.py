@@ -3,7 +3,6 @@ import logging
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
-from django.urls import reverse
 from django.views.generic import CreateView
 
 from apps.list.forms import TodoCreateItemForm
@@ -18,50 +17,44 @@ class HomePageView(CreateView):
 
     def get_context_data(self, **kwargs) -> dict:
         kwargs['todo_form'] = {
-            'label': 'Create to-do list',
+            'label': 'Create To-Do list',
             'action': '/',
         }
         return super().get_context_data(**kwargs)
 
-    def get_success_url(self) -> str:
-        return reverse('lists', args=(f'{self.request.user.id}_list', ))
-
     def form_valid(self, form: TodoCreateItemForm) -> HttpResponse:
         user_id = self.request.user.id
 
-        try:
-            new_list = List.objects.get(slug=f'{user_id}_list')
-        except List.DoesNotExist:
-            new_list = List.objects.create(slug=f'{user_id}_list')
+        new_list = List.objects.get_or_create(slug=f'{user_id}_list')[0]
 
         form = form.save(commit=False)
         form.list = new_list
         form.save()
-        return redirect(self.get_success_url())
+        return redirect(new_list.get_absolute_url())
 
 
 def my_list_view(request: WSGIRequest, slug: str) -> HttpResponse:
-    if (form := TodoCreateItemForm(request.POST)).is_valid():
-        form = form.save(commit=False)
+    extra_context = {}
 
-        try:
-            new_list = List.objects.get(slug=slug)
-        except List.DoesNotExist:
-            new_list = List.objects.create(slug=slug)
+    if request.method == 'POST':
+        if (form := TodoCreateItemForm(request.POST)).is_valid():
+            form = form.save(commit=False)
 
-        form.list = new_list
-        form.save()
-        return redirect(reverse('lists', args=(f'{request.user.id}_list', )))
-    else:
-        items = ListItem.objects.filter(list__slug=slug)
-        form = TodoCreateItemForm()
+            new_list = List.objects.get_or_create(slug=slug)[0]
 
+            form.list = new_list
+            form.save()
+            return redirect(new_list.get_absolute_url())
+        else:
+            extra_context['form'] = form
+
+    items = ListItem.objects.filter(list__slug=slug)
     context = {
         'items': items,
-        'form': form,
+        'form': TodoCreateItemForm(),
         'todo_form': {
-            'label': 'Your to-do list',
-            'action': reverse('lists', args=(f'{request.user.id}_list', )),
+            'label': 'Your To-Do list',
+            'action': List(slug=slug).get_absolute_url(),
         },
-    }
+    } | extra_context
     return render(request, 'list/list.html', context)
