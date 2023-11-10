@@ -20,7 +20,10 @@ class List(models.Model):
 
 class ListItem(models.Model):
     content = models.CharField(max_length=256)
-    list = models.ForeignKey(List, on_delete=models.CASCADE)
+    list = models.ForeignKey(
+        List, on_delete=models.CASCADE,
+        related_name='items',
+    )
 
     def __str__(self) -> str:
         return reprlib.repr(self.content)

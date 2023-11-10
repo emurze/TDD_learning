@@ -1,5 +1,6 @@
 import datetime
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from django.db import IntegrityError
@@ -12,21 +13,20 @@ class ListAndItemsModelTest(TestCase):
         self.new_list = List.objects.create(slug='some')
 
     # integration
-    def test_creating_and_retrieving(self) -> None:
-        ListItem.objects.create(content='item_1', list=self.new_list)
-        ListItem.objects.create(content='item_2', list=self.new_list)
+    def test_default_content(self) -> None:
+        new_item = ListItem.objects.create(list=self.new_list)
+        self.assertEqual(new_item.content, '')
 
-        self.assertEqual(2, ListItem.objects.count())
-
-        item_1, item_2 = ListItem.objects.all()
-
-        self.assertEqual(item_1.content, 'item_1')
-        self.assertEqual(item_2.content, 'item_2')
+    # integration
+    def test_item_is_related_to_list(self) -> None:
+        new_item = ListItem.objects.create(content='hi', list=self.new_list)
+        self.assertEqual(list(self.new_list.items.all()), [new_item])
 
     # integration
     def test_item_not_null(self) -> None:
-        with self.assertRaises(IntegrityError):
-            ListItem.objects.create(content=None, list=self.new_list)
+        with self.assertRaises(ValidationError):
+            item = ListItem(content=None, list=self.new_list)
+            item.full_clean()
 
     # integration
     def test_fk_list_rel(self) -> None:
@@ -46,11 +46,10 @@ class ListModelTest(TestCase):
     # integration
     def test_unique_slug(self) -> None:
         List.objects.create(slug='item_1')
-        try:
-            List.objects.create(slug='item_1')
-            self.assertTrue(0)
-        except IntegrityError:
-            self.assertTrue(1)
+
+        with self.assertRaises(ValidationError):
+            item = List(slug='item_1')
+            item.full_clean()
 
     # integration
     def test_created_is_not_null(self) -> None:

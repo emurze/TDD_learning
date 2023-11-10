@@ -1,12 +1,22 @@
 from http import HTTPStatus
 from unittest import TestCase
 
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+
 from apps.list.forms import TodoCreateItemForm, EMPTY_ITEM_ERROR
+from apps.list.models import ListItem, List
 from apps.list.tests.libs.login_test_case import LoginTestCase
 
 
 class ToDoCreateItemFormTest(LoginTestCase):
     form_required_error: str = EMPTY_ITEM_ERROR
+
+    # unittest
+    def test_cannot_create_without_list(self) -> None:
+        with self.assertRaises(IntegrityError):
+            form = TodoCreateItemForm(data={'content': 'Hi god!'})
+            form.save()
 
     # unittest
     def test_content_maxlength_constraint(self) -> None:
