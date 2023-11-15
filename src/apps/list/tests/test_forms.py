@@ -4,12 +4,13 @@ from unittest import TestCase
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
-from apps.list.forms import TodoCreateItemForm, EMPTY_ITEM_ERROR
+from apps.list.forms import TodoCreateItemForm, EMPTY_ITEM_ERROR, \
+    TodoEmailForm, EMAIL_INVALID_ERROR
 from apps.list.models import ListItem, List
 from apps.list.tests.libs.login_test_case import LoginTestCase
 
 
-class ToDoCreateItemFormTest(LoginTestCase):
+class ToDoCreateItemFormTest(TestCase):
     form_required_error: str = EMPTY_ITEM_ERROR
 
     # unittest
@@ -41,3 +42,26 @@ class ToDoCreateItemFormTest(LoginTestCase):
         form = TodoCreateItemForm(data={'content': ''})
         self.assertFalse(form.is_valid())
         self.assertIn(self.form_required_error, form.errors['content'])
+
+
+class TodoEmailFormTest(TestCase):
+    form_required_error: str = EMPTY_ITEM_ERROR
+    form_email_error: str = EMAIL_INVALID_ERROR
+
+    # unittest
+    def test_form_email_null_constraint(self) -> None:
+        email_form = TodoEmailForm(data={'email': ''})
+        self.assertFalse(email_form.is_valid())
+        self.assertIn(
+            self.form_required_error,
+            email_form.errors['email'],
+        )
+
+    # unittest
+    def test_form_email_constraint(self) -> None:
+        email_form = TodoEmailForm(data={'email': 'hide_yourself'})
+        self.assertFalse(email_form.is_valid())
+        self.assertIn(
+            self.form_email_error,
+            email_form.errors['email'],
+        )

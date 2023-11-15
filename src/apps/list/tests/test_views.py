@@ -1,12 +1,17 @@
+import json
+
 from http import HTTPStatus
 
-from django.urls import reverse, resolve
+from django.urls import reverse, resolve, reverse_lazy
 
-from apps.list.forms import EMPTY_ITEM_ERROR, TodoCreateItemForm
+from apps.list.domain import JsonStatus
+from apps.list.forms import EMPTY_ITEM_ERROR, TodoCreateItemForm, TodoEmailForm
 from apps.list.models import ListItem, List
 from apps.list.tests.libs.login_test_case import LoginTestCase
-from apps.list.views import HomePageView, my_list_view
+from apps.list.views import HomePageView, my_list_view, send_email
 from utils import mixin_for
+
+import apps.list.views
 
 
 class CreateItemFormTestMixin(mixin_for(LoginTestCase)):
@@ -95,7 +100,7 @@ class CreateItemFormTestMixin(mixin_for(LoginTestCase)):
 
 
 class TestHomePage(CreateItemFormTestMixin, LoginTestCase):
-    url: str = '/'
+    url: str = reverse_lazy('home_page')
     base_template: str = 'list/home_page.html'
     page_header: str = 'Create To-Do list'
 
@@ -112,6 +117,22 @@ class TestHomePage(CreateItemFormTestMixin, LoginTestCase):
 
         self.assertEqual(List.objects.count(), 1)
         self.assertEqual(f'{self.user.id}_list', List.objects.first().slug)
+
+    # integration
+    def test_email_form(self) -> None:
+        response = self.client.get(self.url)
+        self.assertIsInstance(
+            response.context['email_form'],
+            TodoEmailForm,
+        )
+
+    # integration
+    def test_email_form_action(self) -> None:
+        response = self.client.get(self.url)
+        self.assertEqual(
+            response.context['email_form_action'],
+            reverse_lazy('send_email'),
+        )
 
     # unittest
     def test_template(self) -> None:
@@ -130,7 +151,7 @@ class TestListView(CreateItemFormTestMixin, LoginTestCase):
 
     @property
     def url(self) -> str:
-        return f'/lists/{self.user.id}_list/'
+        return reverse_lazy('lists', args=(f'{self.user.id}_list',))
 
     # integration
     def test_get_show_your_todo(self) -> None:
@@ -153,12 +174,83 @@ class TestListView(CreateItemFormTestMixin, LoginTestCase):
         self.assertContains(response, 'item 2')
         self.assertContains(response, 'item 3')
 
-    # unittest
+    # integration
     def test_template(self) -> None:
         response = self.client.get(self.url)
         self.assertTemplateUsed(response, self.base_template)
 
-    # unittest
+    # integration
     def test_url(self) -> None:
         resolver = resolve(self.url)
         self.assertEqual(resolver.func, my_list_view)
+
+
+class SendEmailViewTest(LoginTestCase):
+    url = reverse_lazy('send_email')
+
+    """Data from fake_send_mail"""
+    send_mail_called: bool
+    subject: str
+    body: str
+    from_email: str
+    to_list: list[str] | tuple[str]
+
+    def get_form_invalid_response(self) -> dict:
+        response = self.client.post(self.url, data={'email': 'hi'})
+        return dict(
+            json.loads(
+                response.content.decode('utf-8')
+            )
+        )
+
+    def get_form_valid_response(self, email: str = 'adm1@amd1.com') -> dict:
+        response = self.client.post(self.url, data={'email': email})
+        return dict(
+            json.loads(
+                response.content.decode('utf-8')
+            )
+        )
+
+    # integration
+    def test_post_form_valid_send_mail(self) -> None:
+        self.send_mail_called = False
+
+        def fake_send_mail(
+            subject: str,
+            body: str,
+            from_email: str,
+            to_list: list[str] | tuple[str],
+        ) -> None:
+            self.send_mail_called = True
+            self.subject = subject
+            self.body = body
+            self.from_email = from_email
+            self.to_list = to_list
+
+        apps.list.views.send_mail = fake_send_mail
+
+        dict_response = self.get_form_valid_response(
+            email='hi_lerka@gmail.com',
+        )
+
+        self.assertEqual(dict_response.get('status'), JsonStatus.OK)
+        self.assertTrue(self.send_mail_called)
+        self.assertEqual(self.subject, 'Your login link for SuperLists')
+        self.assertEqual(self.body, 'body text tbc')
+        self.assertEqual(self.from_email, 'noreply@superlists')
+        self.assertEqual(self.to_list, ['hi_lerka@gmail.com'])
+
+    # integration
+    def test_post_form_invalid(self) -> None:
+        dict_response = self.get_form_invalid_response()
+        self.assertEqual(dict_response.get('status'), JsonStatus.ERROR)
+
+    # integration
+    def test_get_is_not_allowed(self) -> None:
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+
+    # integration
+    def test_url(self) -> None:
+        resolver = resolve(self.url)
+        self.assertEqual(resolver.func, send_email)

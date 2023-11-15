@@ -23,6 +23,18 @@
 				</div>
 			</div>
 		</div>
+		<div class="row w-100 justify-content-center">
+			<div class="col-md-6 my-5 bg-light p-5">
+				<div class="text-center">
+					{#  AJAX  #}
+{#					<h1 class="mb-4">{{ email_form.label }}</h1>#}
+					<form method="POST" action="{{ email_form_action }}">
+						{% csrf_token %}
+						<p>{{ email_form.email }}{{ email_form.errors }}</p>
+					</form>
+				</div>
+			</div>
+		</div>
 		{% block content %}
 			<div class="container-md">
 				<div class="row">

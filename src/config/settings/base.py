@@ -89,3 +89,5 @@ LOGIN_REDIRECT_URL = reverse_lazy('home_page')
 OPEN_URLS = [
     reverse_lazy('register'),
 ]
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
