@@ -1,5 +1,8 @@
 import logging
 
+from django.contrib import messages
+from django.contrib import auth
+from django.contrib.auth.models import AnonymousUser
 from django.core.handlers.wsgi import WSGIRequest
 from django.core.mail import send_mail
 from django.http import HttpResponse, JsonResponse
@@ -8,9 +11,9 @@ from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import CreateView
 
-from apps.list.domain import JsonStatus
-from apps.list.forms import TodoCreateItemForm, TodoEmailForm
-from apps.list.models import List, ListItem
+from .domain import JsonStatus
+from .forms import TodoCreateItemForm, TodoEmailForm
+from .models import List, ListItem
 
 lg = logging.getLogger(__name__)
 
@@ -35,7 +38,7 @@ class HomePageView(CreateView):
         form = form.save(commit=False)
         form.list = new_list
         form.save()
-        return redirect(new_list.get_absolute_url())
+        return redirect(new_list)
 
 
 @require_http_methods(["GET", "POST"])
@@ -44,13 +47,13 @@ def my_list_view(request: WSGIRequest, slug: str) -> HttpResponse:
 
     if request.method == 'POST':
         if (form := TodoCreateItemForm(request.POST)).is_valid():
+            new_list = List()
+            new_list.slug = slug
+            new_list.save()
             form = form.save(commit=False)
-
-            new_list = List.objects.get_or_create(slug=slug)[0]
-
             form.list = new_list
             form.save()
-            return redirect(new_list.get_absolute_url())
+            return redirect(str(new_list.get_absolute_url()))
         else:
             extra_context['form'] = form
 
@@ -76,6 +79,17 @@ def send_email(request: WSGIRequest) -> HttpResponse:
             'noreply@superlists',
             [cd['email']],
         )
+        messages.success(request, 'Email message was successfully sent')
         return JsonResponse({'status': JsonStatus.OK})
     else:
-        return JsonResponse({'status': JsonStatus.ERROR})
+        return JsonResponse({
+            'status': JsonStatus.ERROR,
+            'error_message': form.errors['email'],
+        })
+
+
+def custom_login(request: WSGIRequest) -> HttpResponse:
+    if not isinstance(request.user, AnonymousUser):
+        user = auth.authenticate(username='adm2', password='adm2')
+        auth.login(request, user)
+    return HttpResponse()

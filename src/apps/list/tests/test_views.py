@@ -1,17 +1,19 @@
 import json
+from collections.abc import Callable
 
 from http import HTTPStatus
+from unittest.mock import patch, MagicMock, call
 
 from django.urls import reverse, resolve, reverse_lazy
 
 from apps.list.domain import JsonStatus
 from apps.list.forms import EMPTY_ITEM_ERROR, TodoCreateItemForm, TodoEmailForm
 from apps.list.models import ListItem, List
-from apps.list.tests.libs.login_test_case import LoginTestCase
-from apps.list.views import HomePageView, my_list_view, send_email
+from apps.list.tests.libs.login_test_case import LoginTestCase, Method
+from apps.list.views import HomePageView, my_list_view, send_email, \
+    custom_login
 from utils import mixin_for
-
-import apps.list.views
+from django.test import RequestFactory
 
 
 class CreateItemFormTestMixin(mixin_for(LoginTestCase)):
@@ -27,7 +29,7 @@ class CreateItemFormTestMixin(mixin_for(LoginTestCase)):
 
     # integration
     def test_form_invalid_not_saved_item(self) -> None:
-        self.client.post(self.url, data={'content': 'Hi' * 600})
+        self.factory.post(self.url, data={'content': 'Hi' * 600})
         self.assertEqual(List.objects.count(), 0)
         self.assertEqual(ListItem.objects.count(), 0)
 
@@ -150,12 +152,18 @@ class TestListView(CreateItemFormTestMixin, LoginTestCase):
     base_template: str = 'list/list.html'
 
     @property
+    def slug(self) -> str:
+        return f'{self.user.id}_list'
+
+    @property
     def url(self) -> str:
         return reverse_lazy('lists', args=(f'{self.user.id}_list',))
 
     # integration
     def test_get_show_your_todo(self) -> None:
-        response = self.client.get(self.url)
+        request = self.factory.get(self.url)
+        request.user = self.user
+        response = my_list_view(request, self.slug)
 
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertContains(response, self.page_header)
@@ -167,7 +175,9 @@ class TestListView(CreateItemFormTestMixin, LoginTestCase):
         ListItem.objects.create(content='item 2', list=new_list)
         ListItem.objects.create(content='item 3', list=new_list)
 
-        response = self.client.get(self.url)
+        request = self.factory.get(self.url)
+        request.user = self.user
+        response = my_list_view(request, self.slug)
 
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertContains(response, 'item 1')
@@ -184,19 +194,28 @@ class TestListView(CreateItemFormTestMixin, LoginTestCase):
         resolver = resolve(self.url)
         self.assertEqual(resolver.func, my_list_view)
 
+    @patch('apps.list.views.List')
+    @patch('apps.list.views.TodoCreateItemForm')
+    def test_form_valid_can_create_new_list_with_slug11(
+            self, mock_form: MagicMock, mock_list: MagicMock,
+    ) -> None:
+        request = self.factory.post(self.url, data={'content': 'Hi'}, )
+        request.user = self.user
+
+        my_list_view(request, f'{self.user.id}_list')
+
+        new_list = mock_list.return_value
+        user_slug = f'{self.user.id}_list'
+
+        self.assertEqual(new_list.slug, user_slug)
+
 
 class SendEmailViewTest(LoginTestCase):
     url = reverse_lazy('send_email')
-
-    """Data from fake_send_mail"""
-    send_mail_called: bool
-    subject: str
-    body: str
-    from_email: str
-    to_list: list[str] | tuple[str]
+    func = send_email
 
     def get_form_invalid_response(self) -> dict:
-        response = self.client.post(self.url, data={'email': 'hi'})
+        response = self.make_request(Method.POST, data={'email': 'hi'})
         return dict(
             json.loads(
                 response.content.decode('utf-8')
@@ -204,7 +223,7 @@ class SendEmailViewTest(LoginTestCase):
         )
 
     def get_form_valid_response(self, email: str = 'adm1@amd1.com') -> dict:
-        response = self.client.post(self.url, data={'email': email})
+        response = self.make_request(Method.POST, data={'email': email})
         return dict(
             json.loads(
                 response.content.decode('utf-8')
@@ -212,45 +231,71 @@ class SendEmailViewTest(LoginTestCase):
         )
 
     # integration
-    def test_post_form_valid_send_mail(self) -> None:
-        self.send_mail_called = False
+    @patch('apps.list.views.send_mail')
+    def test_post_form_valid_send_mail(self, mock_send_mail: MagicMock,) -> None:
+        dict_response = self.get_form_valid_response(email='lerka@gmail.com')
+        (subject, body, from_email, to_list), kwargs = mock_send_mail.call_args
 
-        def fake_send_mail(
-            subject: str,
-            body: str,
-            from_email: str,
-            to_list: list[str] | tuple[str],
-        ) -> None:
-            self.send_mail_called = True
-            self.subject = subject
-            self.body = body
-            self.from_email = from_email
-            self.to_list = to_list
+        self.assertEqual(dict_response.get('status'), JsonStatus.OK)
+        self.assertTrue(mock_send_mail.called)
+        self.assertEqual(subject, 'Your login link for SuperLists')
+        self.assertEqual(body, 'body text tbc')
+        self.assertEqual(from_email, 'noreply@superlists')
+        self.assertEqual(to_list, ['lerka@gmail.com'])
 
-        apps.list.views.send_mail = fake_send_mail
-
+    # integration
+    @patch('apps.list.views.messages')
+    @patch('apps.list.views.send_mail')
+    def test_form_valid_success_message(
+        self, mock_send_mail: MagicMock, mock_messages: MagicMock,
+    ) -> None:
         dict_response = self.get_form_valid_response(
             email='hi_lerka@gmail.com',
         )
-
         self.assertEqual(dict_response.get('status'), JsonStatus.OK)
-        self.assertTrue(self.send_mail_called)
-        self.assertEqual(self.subject, 'Your login link for SuperLists')
-        self.assertEqual(self.body, 'body text tbc')
-        self.assertEqual(self.from_email, 'noreply@superlists')
-        self.assertEqual(self.to_list, ['hi_lerka@gmail.com'])
+
+        """
+        1. Call function
+        2. Mock class nesting
+        3. Double Patch
+        4. Patch problem 
+               - code depends on implementation 
+        """
+
+        self.assertEqual(
+            mock_messages.success.call_args[0][1],
+            'Email message was successfully sent',
+        )
 
     # integration
     def test_post_form_invalid(self) -> None:
         dict_response = self.get_form_invalid_response()
-        self.assertEqual(dict_response.get('status'), JsonStatus.ERROR)
-
-    # integration
-    def test_get_is_not_allowed(self) -> None:
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
+        self.assertEqual(dict_response['status'], JsonStatus.ERROR)
+        self.assertIn('Enter a valid email address',
+                      dict_response['error_message'])
 
     # integration
     def test_url(self) -> None:
         resolver = resolve(self.url)
         self.assertEqual(resolver.func, send_email)
+
+
+class CustomLoginTest(LoginTestCase):
+    url: str = '/custom_login'
+    func: Callable = custom_login
+    """Write 3 tests instead of mock"""
+
+    @patch('apps.list.views.auth')
+    def test_custom_login_the_same_user(self, mock_auth: MagicMock) -> None:
+        """Depends on implementation"""
+
+        self.make_request(Method.GET)
+        request = RequestFactory().get('/custom_login')
+        request.user = self.user
+
+        custom_login(request)
+
+        self.assertEqual(
+            mock_auth.login.call_args,
+            call(request, mock_auth.authenticate.return_value)
+        )

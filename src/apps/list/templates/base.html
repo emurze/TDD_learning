@@ -11,6 +11,19 @@
 	<link rel="stylesheet" href="{% static 'css/base.css' %}">
 </head>
 <body>
+	{% if messages %}
+		<div class="row">
+			<div class="col-md-8">
+				{% for message in messages %}
+					{% if message.level_tag == 'success' %}
+						<div class="alert alert-success">{{ message }}</div>
+					{% else %}
+						<div class="alert alert-warning">{{ message }}</div>
+					{% endif %}
+				{% endfor %}
+			</div>
+		</div>
+	{% endif %}
 	<div class="container">
 		<div class="row w-100 justify-content-center">
 			<div class="col-md-6 my-5 bg-light p-5">
@@ -28,10 +41,12 @@
 				<div class="text-center">
 					{#  AJAX  #}
 {#					<h1 class="mb-4">{{ email_form.label }}</h1>#}
-					<form method="POST" action="{{ email_form_action }}">
+					<div id="email_form">
 						{% csrf_token %}
 						<p>{{ email_form.email }}{{ email_form.errors }}</p>
-					</form>
+						<p class="errors"></p>
+						<button type="submit">send</button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -48,6 +63,37 @@
 			</div>
 		{% endblock %}
 	</div>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+	<script>
+		const csrf_token_input = document.querySelector("input[name='csrfmiddlewaretoken']")
+    	const csrf_token = csrf_token_input ? csrf_token_input.value : null
+		const button = document.querySelector('#email_form button[type="submit"]')
+		const email_input = document.querySelector('#id_email')
+		const errors = document.querySelector('#email_form .errors')
+
+		button.onclick = () => {
+			const form = new FormData()
+            form.append('email', email_input.value)
+
+            const headers = {
+                'X-CSRFToken': csrf_token,
+                'Content-Type': `multipart/form-data;
+                 boundary=${form._boundary}`
+            }
+            const url = `{{ email_form_action }}`
+
+            async function _() {
+                const response = await axios.post(url, form, {headers})
+				if (response.data.status === 200) {
+					email_input.value = ''
+				} else {
+					errors.innerHTML = `${response.data.error_message}`				}
+			}_()
+		}
+        email_input.onkeydown = () => {
+            errors.innerHTML = ''
+		}
+	</script>
 	<script src="{% static 'bootstrap-5.3.2-dist/js/bootstrap.bundle.min.js' %}"></script>
 </body>
 </html>
