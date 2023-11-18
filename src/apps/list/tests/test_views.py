@@ -105,24 +105,25 @@ class TestHomePage(CreateItemFormTestMixin, LoginTestCase):
     url: str = reverse_lazy('home_page')
     base_template: str = 'list/home_page.html'
     page_header: str = 'Create To-Do list'
+    func: Callable = HomePageView.as_view()
 
     # integration
     def test_get_show_start_todo(self) -> None:
-        response = self.client.get(self.url)
+        response = self.make_request(Method.POST)
 
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertContains(response, self.page_header)
 
     # integration
     def test_form_valid_create_list(self) -> None:
-        self.client.post(self.url, data={'content': 'Hi'})
+        self.make_request(Method.POST, data={'content': 'Hi'})
 
         self.assertEqual(List.objects.count(), 1)
         self.assertEqual(f'{self.user.id}_list', List.objects.first().slug)
 
     # integration
     def test_email_form(self) -> None:
-        response = self.client.get(self.url)
+        response = self.make_request(Method.POST)
         self.assertIsInstance(
             response.context['email_form'],
             TodoEmailForm,
@@ -247,21 +248,12 @@ class SendEmailViewTest(LoginTestCase):
     @patch('apps.list.views.messages')
     @patch('apps.list.views.send_mail')
     def test_form_valid_success_message(
-        self, mock_send_mail: MagicMock, mock_messages: MagicMock,
+            self,
+            mock_send_mail: MagicMock,
+            mock_messages: MagicMock,
     ) -> None:
-        dict_response = self.get_form_valid_response(
-            email='hi_lerka@gmail.com',
-        )
-        self.assertEqual(dict_response.get('status'), JsonStatus.OK)
-
-        """
-        1. Call function
-        2. Mock class nesting
-        3. Double Patch
-        4. Patch problem 
-               - code depends on implementation 
-        """
-
+        response: dict = self.get_form_valid_response(email='lerka@gmail.com')
+        self.assertEqual(response['status'], JsonStatus.OK)
         self.assertEqual(
             mock_messages.success.call_args[0][1],
             'Email message was successfully sent',
@@ -269,10 +261,9 @@ class SendEmailViewTest(LoginTestCase):
 
     # integration
     def test_post_form_invalid(self) -> None:
-        dict_response = self.get_form_invalid_response()
-        self.assertEqual(dict_response['status'], JsonStatus.ERROR)
-        self.assertIn('Enter a valid email address',
-                      dict_response['error_message'])
+        response: dict = self.get_form_invalid_response()
+        self.assertEqual(response['status'], JsonStatus.ERROR)
+        self.assertIn('Enter a valid email address', response['error_message'])
 
     # integration
     def test_url(self) -> None:
